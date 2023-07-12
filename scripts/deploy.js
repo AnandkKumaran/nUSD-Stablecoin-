@@ -22,17 +22,27 @@ async function main() {
 
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  const Token = await ethers.getContractFactory("Token");
+  const Token = await ethers.getContractFactory("nUSDStableCoin");
   const token = await Token.deploy();
   await token.deployed();
 
   console.log("Token address:", token.address);
 
+  const ETH_USD_PRICE_FEED = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
+  const Engine = await ethers.getContractFactory("nUSDEngine");
+  const engine = await Engine.deploy(ETH_USD_PRICE_FEED,token.address);
+  await engine.deployed();
+
+  console.log("nUSD Engine address:", engine.address);
+
+  // GRANT OWNER ROLE TO ENGINE CONTRACT
+  await token.transferOwnership(engine.address);
+
   // We also save the contract's artifacts and address in the frontend directory
-  saveFrontendFiles(token);
+  saveFrontendFiles(token, engine);
 }
 
-function saveFrontendFiles(token) {
+function saveFrontendFiles(token, engine) {
   const fs = require("fs");
   const contractsDir = path.join(__dirname, "..", "frontend", "src", "contracts");
 
@@ -42,15 +52,23 @@ function saveFrontendFiles(token) {
 
   fs.writeFileSync(
     path.join(contractsDir, "contract-address.json"),
-    JSON.stringify({ Token: token.address }, undefined, 2)
+    JSON.stringify({ Token: token.address, Engine: engine.address }, undefined, 2)
   );
 
-  const TokenArtifact = artifacts.readArtifactSync("Token");
+  const TokenArtifact = artifacts.readArtifactSync("nUSDStableCoin");
 
   fs.writeFileSync(
     path.join(contractsDir, "Token.json"),
     JSON.stringify(TokenArtifact, null, 2)
   );
+
+  const EngineArtifact = artifacts.readArtifactSync("nUSDEngine");
+
+  fs.writeFileSync(
+    path.join(contractsDir, "Engine.json"),
+    JSON.stringify(TokenArtifact, null, 2)
+  );
+
 }
 
 main()
